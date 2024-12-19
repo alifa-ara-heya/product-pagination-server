@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config()
 const app = express();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const port = process.env.PORT || 5000;
 
@@ -33,9 +33,31 @@ async function run() {
 
     const productCollection = client.db('emaJohnDB').collection('products');
 
+    //my code starts
     app.get('/products', async (req, res) => {
-      const result = await productCollection.find().toArray();
+      const page = parseInt(req.query.page);
+      const size = parseInt(req.query.size);
+      // console.log('pagination query', req.query);
+      console.log('pagination query', page, size);
+      const result = await productCollection.find()
+        .skip(page * size)
+        .limit(size)
+        .toArray();
       res.send(result);
+    })
+
+    app.post('/productByIds', async (req, res) => {
+      const ids = req.body;
+      // console.log(ids);
+      const idsWithObjectId = ids.map(id => new ObjectId(id))
+      // console.log(idsWithObjectId);
+      const query = {
+        _id: {
+          $in: idsWithObjectId
+        }
+      }
+      const result = await productCollection.find(query).toArray();
+      res.send(result)
     })
 
     // getting the number of the products
@@ -43,6 +65,7 @@ async function run() {
       const count = await productCollection.estimatedDocumentCount();
       res.send({ count })
     })
+    //my code ends
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
